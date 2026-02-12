@@ -1468,6 +1468,9 @@ class AgentManager:
                                     content=assistant_content.blocks,
                                     model=assistant_model
                                 )
+                            # Drain remaining SDK messages to prevent stale
+                            # data appearing in the next continuation call.
+                            await self._drain_sdk_queue(combined_queue)
                             return
 
                         if formatted.get('type') == 'permission_request':
@@ -1481,6 +1484,9 @@ class AgentManager:
                                     content=assistant_content.blocks,
                                     model=assistant_model
                                 )
+                            # Drain remaining SDK messages to prevent stale
+                            # data appearing in the next continuation call.
+                            await self._drain_sdk_queue(combined_queue)
                             return
 
                     if isinstance(message, ResultMessage):
@@ -1533,6 +1539,33 @@ class AgentManager:
             # Only remove from _clients tracking (NOT from _active_sessions - that's for reuse)
             if session_context.get("sdk_session_id"):
                 self._clients.pop(session_context["sdk_session_id"], None)
+
+    @staticmethod
+    async def _drain_sdk_queue(combined_queue: asyncio.Queue, timeout: float = 30.0) -> None:
+        """Drain remaining SDK messages from the combined queue.
+
+        Called after early-return points (AskUserQuestion, permission_request)
+        to consume leftover messages so the next receive_response() call
+        starts clean and doesn't replay stale data.
+        """
+        drained = 0
+        try:
+            while True:
+                item = await asyncio.wait_for(combined_queue.get(), timeout=timeout)
+                source = item["source"]
+                if source == "sdk_done":
+                    break
+                if source == "error":
+                    logger.warning(f"Error while draining SDK queue: {item.get('error')}")
+                    break
+                if source == "sdk":
+                    drained += 1
+                    msg = item["message"]
+                    logger.debug(f"Drained message {drained}: {type(msg).__name__}")
+                # Ignore other sources (e.g. "permission") during draining
+        except asyncio.TimeoutError:
+            logger.warning(f"Timed out draining SDK queue after {timeout}s (drained {drained} messages)")
+        logger.info(f"Drained {drained} remaining SDK messages after early return")
 
     async def _format_message(self, message: Any, agent_config: dict, session_id: Optional[str] = None) -> Optional[dict]:
         """Format SDK message to API response format."""
