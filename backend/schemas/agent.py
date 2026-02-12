@@ -62,7 +62,7 @@ class AgentConfig(BaseModel):
     allowed_directories: list[str] = Field(default_factory=list, description="Additional directories the agent can access (beyond working_directory)")
     global_user_mode: bool = Field(default=True, description="If True, uses home directory and full file access instead of isolated workspace")
     enable_human_approval: bool = Field(default=True, description="If True, dangerous commands require user approval instead of auto-blocking")
-    sandbox_enabled: bool = Field(default=True, description="Enable sandbox for bash command isolation")
+    sandbox_enabled: bool = Field(default=False, description="Enable sandbox for bash command isolation (restricts curl, wget, etc.)")
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig, description="Sandbox configuration for bash isolation")
     status: Literal["active", "inactive"] = "active"
     created_at: datetime | None = None
@@ -122,7 +122,7 @@ class AgentCreateRequest(BaseModel):
     allowed_directories: list[str] = Field(default_factory=list)
     global_user_mode: bool = True
     enable_human_approval: bool = True
-    sandbox_enabled: bool = True
+    sandbox_enabled: bool = False
     sandbox: SandboxConfigRequest | None = None
 
 
@@ -197,7 +197,7 @@ class AgentResponse(BaseModel):
     allowed_directories: list[str] = Field(default_factory=list)
     global_user_mode: bool = True
     enable_human_approval: bool = True
-    sandbox_enabled: bool = True
+    sandbox_enabled: bool = False
     sandbox: SandboxConfigResponse = Field(default_factory=SandboxConfigResponse)
     status: str = "active"
     created_at: str = ""

@@ -645,6 +645,10 @@ class AgentManager:
         # Key: session_id, Value: {"client": ClaudeSDKClient, "wrapper": _ClaudeClientWrapper, "created_at": float}
         self._active_sessions: dict[str, dict] = {}
         self._cleanup_task: asyncio.Task | None = None
+        # Signals that _drain_remaining has finished for a session.
+        # continue_with_answer waits on this before creating a new reader
+        # to avoid two concurrent readers racing on the same stdout.
+        self._drain_events: dict[str, asyncio.Event] = {}
 
     def _start_cleanup_loop(self):
         """Start background task to clean up stale sessions."""
@@ -1236,6 +1240,11 @@ class AgentManager:
                 client = await wrapper.__aenter__()
                 logger.info(f"ClaudeSDKClient created, is_resuming={is_resuming}")
 
+                # Pass wrapper via session_context so _run_query_on_client
+                # can eagerly store the client in _active_sessions at init
+                # time (before AskUserQuestion drain may block).
+                session_context["wrapper"] = wrapper
+
                 try:
                     async for event in self._run_query_on_client(
                         client=client,
@@ -1258,17 +1267,6 @@ class AgentManager:
                     except Exception:
                         pass
                     raise
-
-                # Store client for reuse (keep alive for future resume calls)
-                final_session_id = session_context["sdk_session_id"]
-                if final_session_id:
-                    self._active_sessions[final_session_id] = {
-                        "client": client,
-                        "wrapper": wrapper,
-                        "created_at": time.time(),
-                        "last_used": time.time(),
-                    }
-                    logger.info(f"Stored long-lived client for session {final_session_id}")
 
         except Exception as e:
             import traceback
@@ -1298,6 +1296,7 @@ class AgentManager:
         user_message: Optional[str],
         work_dir: Optional[str],
         agent_id: str,
+        parent_tool_use_id: Optional[str] = None,
     ) -> AsyncIterator[dict]:
         """Send a query on an existing client and yield SSE events.
 
@@ -1311,17 +1310,17 @@ class AgentManager:
             logger.info(f"Sending query: {display_text[:100] if display_text else 'multimodal'}...")
 
             # Send query - use content for multimodal, message for simple text
-            if isinstance(query_content, list):
-                async def multimodal_message_generator():
-                    """Async generator for multimodal content."""
+            if isinstance(query_content, list) or parent_tool_use_id:
+                async def message_generator():
+                    """Async generator for structured messages."""
                     msg = {
                         "type": "user",
                         "message": {"role": "user", "content": query_content},
-                        "parent_tool_use_id": None,
+                        "parent_tool_use_id": parent_tool_use_id,
                     }
                     yield msg
 
-                await client.query(multimodal_message_generator())
+                await client.query(message_generator())
             else:
                 await client.query(query_content)
             logger.info(f"Query sent, waiting for response...")
@@ -1446,6 +1445,20 @@ class AgentManager:
                                     content=user_content
                                 )
 
+                            # Store client in _active_sessions immediately so
+                            # continue_with_answer can find it even if we hit
+                            # an early-return (AskUserQuestion / permission_request)
+                            # before _run_query_on_client returns to the caller.
+                            wrapper = session_context.get("wrapper")
+                            if wrapper and session_context["sdk_session_id"]:
+                                self._active_sessions[session_context["sdk_session_id"]] = {
+                                    "client": client,
+                                    "wrapper": wrapper,
+                                    "created_at": time.time(),
+                                    "last_used": time.time(),
+                                }
+                                logger.info(f"Eagerly stored long-lived client for session {session_context['sdk_session_id']}")
+
                         continue  # Don't format SystemMessage for output
 
                     formatted = await self._format_message(message, agent_config, session_context["sdk_session_id"])
@@ -1458,24 +1471,13 @@ class AgentManager:
 
                         yield formatted
 
-                        if formatted.get('type') == 'ask_user_question':
-                            logger.info(f"AskUserQuestion detected, stopping to wait for user input")
-                            sdk_session = session_context.get("sdk_session_id")
-                            if assistant_content and sdk_session:
-                                await self._save_message(
-                                    session_id=sdk_session,
-                                    role="assistant",
-                                    content=assistant_content.blocks,
-                                    model=assistant_model
-                                )
-                            # Drain remaining SDK messages to prevent stale
-                            # data appearing in the next continuation call.
-                            await self._drain_sdk_queue(combined_queue)
-                            return
+                        if formatted.get('type') in ('ask_user_question', 'permission_request'):
+                            event_type = formatted['type']
+                            if event_type == 'ask_user_question':
+                                logger.info("AskUserQuestion detected, stopping to wait for user input")
+                            else:
+                                logger.info(f"Permission request detected: {formatted.get('requestId')}, stopping to wait for user decision")
 
-                        if formatted.get('type') == 'permission_request':
-                            request_id = formatted.get('requestId')
-                            logger.info(f"Permission request detected from message: {request_id}, stopping to wait for user decision")
                             sdk_session = session_context.get("sdk_session_id")
                             if assistant_content and sdk_session:
                                 await self._save_message(
@@ -1484,9 +1486,10 @@ class AgentManager:
                                     content=assistant_content.blocks,
                                     model=assistant_model
                                 )
-                            # Drain remaining SDK messages to prevent stale
-                            # data appearing in the next continuation call.
-                            await self._drain_sdk_queue(combined_queue)
+                            # Drain remaining messages and signal completion.
+                            # continue_with_answer waits for this signal so
+                            # it never runs a second reader concurrently.
+                            await self._signal_drain(sdk_session, combined_queue)
                             return
 
                     if isinstance(message, ResultMessage):
@@ -1540,31 +1543,53 @@ class AgentManager:
             if session_context.get("sdk_session_id"):
                 self._clients.pop(session_context["sdk_session_id"], None)
 
+    async def _signal_drain(self, sdk_session: str | None, combined_queue: asyncio.Queue) -> None:
+        """Drain remaining messages and signal completion via _drain_events."""
+        drain_event = asyncio.Event()
+        if sdk_session:
+            self._drain_events[sdk_session] = drain_event
+        try:
+            await self._drain_remaining(combined_queue)
+        finally:
+            drain_event.set()
+            if sdk_session:
+                self._drain_events.pop(sdk_session, None)
+
     @staticmethod
-    async def _drain_sdk_queue(combined_queue: asyncio.Queue, timeout: float = 30.0) -> None:
+    async def _drain_remaining(combined_queue: asyncio.Queue) -> None:
         """Drain remaining SDK messages from the combined queue.
 
-        Called after early-return points (AskUserQuestion, permission_request)
-        to consume leftover messages so the next receive_response() call
-        starts clean and doesn't replay stale data.
+        Called after early-return points (AskUserQuestion, permission_request).
+        The sdk_reader_task is intentionally kept alive so it continues to
+        consume the CLI's stdout — this prevents stale data from appearing
+        when the next receive_response() call starts.
+
+        Stops when:
+        - sdk_done: reader finished (natural end)
+        - ResultMessage: the CLI's current round completed
+        - Timeout: no new messages for 10s (CLI is likely waiting for input)
         """
         drained = 0
         try:
             while True:
-                item = await asyncio.wait_for(combined_queue.get(), timeout=timeout)
+                item = await asyncio.wait_for(combined_queue.get(), timeout=10.0)
                 source = item["source"]
                 if source == "sdk_done":
                     break
                 if source == "error":
-                    logger.warning(f"Error while draining SDK queue: {item.get('error')}")
                     break
                 if source == "sdk":
                     drained += 1
                     msg = item["message"]
                     logger.debug(f"Drained message {drained}: {type(msg).__name__}")
+                    # ResultMessage means the CLI finished this round —
+                    # stdout is clean, no need to keep draining.
+                    if isinstance(msg, ResultMessage):
+                        logger.info("Drain saw ResultMessage, CLI round complete")
+                        break
                 # Ignore other sources (e.g. "permission") during draining
         except asyncio.TimeoutError:
-            logger.warning(f"Timed out draining SDK queue after {timeout}s (drained {drained} messages)")
+            pass  # Expected — CLI is waiting for user input
         logger.info(f"Drained {drained} remaining SDK messages after early return")
 
     async def _format_message(self, message: Any, agent_config: dict, session_id: Optional[str] = None) -> Optional[dict]:
@@ -1692,6 +1717,16 @@ class AgentManager:
         assistant_content = ContentBlockAccumulator()
         session_context = {"sdk_session_id": session_id}
 
+        # Wait for the previous round's drain to finish so we don't
+        # race two readers on the same stdout stream.
+        drain_event = self._drain_events.get(session_id)
+        if drain_event:
+            logger.info(f"Waiting for drain to complete before answer continuation, session {session_id}")
+            try:
+                await asyncio.wait_for(drain_event.wait(), timeout=60)
+            except asyncio.TimeoutError:
+                logger.warning(f"Drain wait timed out for session {session_id}, proceeding anyway")
+
         # Try to reuse existing long-lived client
         reused_client = self._get_active_client(session_id)
 
@@ -1714,6 +1749,7 @@ class AgentManager:
                     user_message=answer_message,
                     work_dir=session_info.work_dir if session_info else None,
                     agent_id=agent_id,
+                    parent_tool_use_id=tool_use_id,
                 ):
                     yield event
             else:
@@ -1725,6 +1761,9 @@ class AgentManager:
                 wrapper = _ClaudeClientWrapper(options=options)
                 client = await wrapper.__aenter__()
                 logger.info(f"ClaudeSDKClient created for fresh answer session")
+
+                # Pass wrapper so _run_query_on_client can eagerly store client
+                session_context["wrapper"] = wrapper
 
                 try:
                     async for event in self._run_query_on_client(
@@ -1739,6 +1778,7 @@ class AgentManager:
                         user_message=answer_message,
                         work_dir=session_info.work_dir if session_info else None,
                         agent_id=agent_id,
+                        parent_tool_use_id=tool_use_id,
                     ):
                         yield event
                 except Exception:
@@ -1747,15 +1787,6 @@ class AgentManager:
                     except Exception:
                         pass
                     raise
-
-                # Store for reuse
-                self._active_sessions[session_id] = {
-                    "client": client,
-                    "wrapper": wrapper,
-                    "created_at": time.time(),
-                    "last_used": time.time(),
-                }
-                logger.info(f"Stored long-lived client for session {session_id} (from answer continuation)")
 
         except Exception as e:
             import traceback
@@ -2055,6 +2086,9 @@ Current task: Create a skill named "{skill_name}" that {skill_description}"""
                 client = await wrapper.__aenter__()
                 logger.info(f"ClaudeSDKClient created for skill creation")
 
+                # Pass wrapper so _run_query_on_client can eagerly store client
+                session_context["wrapper"] = wrapper
+
                 try:
                     async for event in self._run_query_on_client(
                         client=client,
@@ -2078,17 +2112,6 @@ Current task: Create a skill named "{skill_name}" that {skill_description}"""
                     except Exception:
                         pass
                     raise
-
-                # Store for reuse
-                final_session_id = session_context["sdk_session_id"]
-                if final_session_id:
-                    self._active_sessions[final_session_id] = {
-                        "client": client,
-                        "wrapper": wrapper,
-                        "created_at": time.time(),
-                        "last_used": time.time(),
-                    }
-                    logger.info(f"Stored long-lived client for skill creator session {final_session_id}")
 
         except Exception as e:
             import traceback

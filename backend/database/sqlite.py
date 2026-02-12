@@ -481,7 +481,7 @@ class SQLiteDatabase(BaseDatabase):
         allowed_directories TEXT DEFAULT '[]',
         global_user_mode INTEGER DEFAULT 0,
         enable_human_approval INTEGER DEFAULT 1,
-        sandbox_enabled INTEGER DEFAULT 1,
+        sandbox_enabled INTEGER DEFAULT 0,
         sandbox TEXT DEFAULT '{}',
         status TEXT DEFAULT 'active',
         user_id TEXT,

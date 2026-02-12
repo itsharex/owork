@@ -239,6 +239,7 @@ function MCPServerForm({
     }
     return [];
   });
+  const [envVisibility, setEnvVisibility] = useState<Record<number, boolean>>({});
   const [url, setUrl] = useState(
     server?.connectionType !== 'stdio' ? (server?.config.url as string) || '' : ''
   );
@@ -371,7 +372,7 @@ function MCPServerForm({
                       className={`flex-1 px-3 py-2 bg-[var(--color-bg)] border rounded-lg text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none text-sm ${isDuplicate ? 'border-status-error focus:border-status-error' : 'border-[var(--color-border)] focus:border-primary'}`}
                     />
                     <input
-                      type="password"
+                      type={envVisibility[index] ? 'text' : 'password'}
                       value={envVar.value}
                       onChange={(e) => {
                         const updated = [...envVars];
@@ -383,8 +384,16 @@ function MCPServerForm({
                     />
                     <button
                       type="button"
+                      onClick={() => setEnvVisibility(prev => ({ ...prev, [index]: !prev[index] }))}
+                      className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors"
+                      title={envVisibility[index] ? 'Hide value' : 'Show value'}
+                    >
+                      <span className="material-symbols-outlined text-lg">{envVisibility[index] ? 'visibility_off' : 'visibility'}</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setEnvVars(envVars.filter((_, i) => i !== index))}
-                      className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-status-error hover:bg-status-error/10 transition-colors"
+                      className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-status-error hover:bg-status-error/10 transition-colors"
                     >
                       <span className="material-symbols-outlined text-lg">close</span>
                     </button>

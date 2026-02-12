@@ -260,7 +260,7 @@
       "enableHumanApproval": "Enable Human Approval",
       "enableHumanApprovalDescription": "Dangerous commands require user confirmation",
       "sandboxEnabled": "Enable Sandbox",
-      "sandboxEnabledDescription": "Restrict bash commands to a secure sandbox (e.g. cannot delete files)",
+      "sandboxEnabledDescription": "Restrict bash commands to a secure sandbox (e.g. cannot delete files, blocks curl/wget network access)",
       "globalUserMode": "Global User Mode",
       "globalUserModeDescription": "Use home directory with full file access",
       "globalUserModeHelp": "Allow agent to access files in user home directory",
