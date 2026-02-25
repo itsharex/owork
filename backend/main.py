@@ -11,8 +11,7 @@ from pathlib import Path
 from config import settings, get_app_data_dir
 
 try:
-    from importlib.metadata import version as _get_version
-    _SDK_VERSION = _get_version("claude-agent-sdk")
+    from claude_agent_sdk import __version__ as _SDK_VERSION
 except Exception:
     _SDK_VERSION = "unknown"
 from core.agent_manager import agent_manager
