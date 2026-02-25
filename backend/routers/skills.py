@@ -24,6 +24,7 @@ from core.exceptions import (
     ValidationException,
 )
 from config import settings
+from core.workspace_manager import workspace_manager
 import asyncio
 import json
 
@@ -432,19 +433,37 @@ async def finalize_skill(request: SkillFinalizeRequest):
 
     logger.info(f"Finalizing skill: original='{request.skill_name}', sanitized='{skill_name}', display_name='{display_name}'")
 
-    # Check if skill directory exists
-    skills_dir = Path(settings.agent_workspace_dir) / ".claude" / "skills"
-    skill_path = skills_dir / skill_name
+    # Check if skill directory exists.
+    # The skill creator agent runs in isolated mode with agent_id='default',
+    # so skills are created in the 'default' agent workspace, not in settings.agent_workspace_dir.
+    # We check the agent workspace first, then the main workspace as fallback.
+    # If found in the agent workspace, copy to main workspace so that all other code paths
+    # (scan, delete, refresh, publish) work correctly and files survive workspace rebuilds.
+    agent_skills_dir = workspace_manager.get_agent_skills_dir('default')
+    main_skills_dir = Path(settings.agent_workspace_dir) / ".claude" / "skills"
+    main_skills_dir.mkdir(parents=True, exist_ok=True)
+
+    agent_skill_path = agent_skills_dir / skill_name
+    main_skill_path = main_skills_dir / skill_name
+
+    if agent_skill_path.exists() and not main_skill_path.exists():
+        # Copy from volatile agent workspace to stable main workspace
+        import shutil
+        shutil.copytree(str(agent_skill_path), str(main_skill_path))
+        logger.info(f"Copied skill from agent workspace to main workspace: {agent_skill_path} -> {main_skill_path}")
+
+    skill_path = main_skill_path
 
     logger.info(f"Looking for skill at: {skill_path}, exists: {skill_path.exists()}")
 
     if not skill_path.exists():
-        # List available directories for debugging
-        available = [d.name for d in skills_dir.iterdir() if d.is_dir()] if skills_dir.exists() else []
-        logger.error(f"Skill directory not found. Available directories: {available}")
+        # List available directories from both locations for debugging
+        agent_available = [d.name for d in agent_skills_dir.iterdir() if d.is_dir()] if agent_skills_dir.exists() else []
+        main_available = [d.name for d in main_skills_dir.iterdir() if d.is_dir()] if main_skills_dir.exists() else []
+        logger.error(f"Skill directory not found. Agent workspace skills: {agent_available}, Main workspace skills: {main_available}")
         raise ValidationException(
             message="Skill directory not found",
-            detail=f"Expected skill at: {skill_path}. Available: {available}",
+            detail=f"Expected skill '{skill_name}' in agent workspace ({agent_skills_dir}) or main workspace ({main_skills_dir})",
             suggested_action="Ensure the skill was created successfully before finalizing"
         )
 

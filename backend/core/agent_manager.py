@@ -862,23 +862,24 @@ class AgentManager:
             working_directory = str(Path.home())
             setting_sources = ['project', 'user']
             workspace_manager.ensure_templates_in_directory(Path(working_directory))
+            # Sync workspace skills to ~/.claude/skills/ so Claude's Skill tool can discover them
+            workspace_manager.sync_skills_to_home()
             logger.info(f"Agent {agent_id} running in GLOBAL USER MODE (cwd: {working_directory})")
         else:
             # Isolated Mode: per-agent workspace with symlinked skills
             working_directory = str(workspace_manager.get_agent_workspace(agent_id))
             setting_sources = ['project']
+
+            # Always rebuild skill symlinks on conversation start.
+            # The workspace directory in /tmp may survive app restarts but have
+            # stale or broken symlinks (e.g., skills added/removed since last run).
+            await workspace_manager.rebuild_agent_workspace(
+                agent_id,
+                effective_skill_ids,
+                allow_all_skills=allow_all_skills
+            )
             workspace_manager.ensure_templates_in_directory(Path(working_directory))
             logger.info(f"Using per-agent workspace: {working_directory} (allow_all_skills={allow_all_skills})")
-
-            # Auto-rebuild workspace if it was deleted (e.g., /tmp cleared on reboot)
-            if not Path(working_directory).exists():
-                logger.warning(f"Agent workspace missing, rebuilding: {working_directory}")
-                await workspace_manager.rebuild_agent_workspace(
-                    agent_id,
-                    effective_skill_ids,
-                    allow_all_skills=allow_all_skills
-                )
-                logger.info(f"Agent workspace rebuilt: {working_directory}")
 
         # Validate add_dirs - ensure directories exist before using them
         # This must run regardless of file_access_enabled since add_dirs affects cwd

@@ -29,6 +29,7 @@ Directory structure:
             └── my-skill-1 -> /home/ubuntu/.../workspace/.claude/skills/my-skill-1
 """
 import logging
+import os
 import shutil
 from pathlib import Path
 from typing import Optional
@@ -314,6 +315,67 @@ class WorkspaceManager:
             if skill_name:
                 skill_names.append(skill_name)
         return skill_names
+
+    def sync_skills_to_home(self) -> int:
+        """Ensure user-created skills in workspace/.claude/skills/ are symlinked into ~/.claude/skills/.
+
+        Global user mode agents use ~/ as cwd, so Claude's Skill tool only looks in
+        ~/.claude/skills/. This method creates symlinks so that skills stored in the
+        main workspace are also discoverable in global mode.
+
+        Also cleans up broken symlinks that point into the main workspace (e.g. after
+        a skill was deleted).
+
+        Returns:
+            Number of symlinks created.
+        """
+        home_skills_dir = Path.home() / ".claude" / "skills"
+        home_skills_dir.mkdir(parents=True, exist_ok=True)
+
+        # Clean up broken symlinks pointing into our main workspace
+        main_prefix = str(self.main_skills_dir.resolve())
+        for item in home_skills_dir.iterdir():
+            if item.is_symlink() and not item.exists():
+                # Broken symlink - remove if it pointed into our workspace
+                try:
+                    link_target = str(Path(os.readlink(item)))
+                    if link_target.startswith(main_prefix):
+                        item.unlink()
+                        logger.debug(f"Removed broken symlink: {item}")
+                except OSError:
+                    pass
+
+        if not self.main_skills_dir.exists():
+            return 0
+
+        count = 0
+        for item in self.main_skills_dir.iterdir():
+            if not item.is_dir() or item.name.startswith('.'):
+                continue
+            if not (item / "SKILL.md").exists():
+                continue
+
+            target = home_skills_dir / item.name
+            source = item.resolve()
+
+            if target.exists() or target.is_symlink():
+                # Already exists - check if it points to the right place
+                if target.is_symlink() and target.resolve() == source:
+                    continue
+                # Different target or not a symlink - skip to avoid overwriting
+                logger.debug(f"Skipping {item.name}: already exists at {target}")
+                continue
+
+            try:
+                target.symlink_to(source)
+                count += 1
+                logger.debug(f"Symlinked skill to home: {target} -> {source}")
+            except OSError as e:
+                logger.warning(f"Failed to symlink skill {item.name} to home: {e}")
+
+        if count > 0:
+            logger.info(f"Synced {count} skills to ~/.claude/skills/")
+        return count
 
     def workspace_exists(self, agent_id: str) -> bool:
         """Check if an agent's workspace exists."""
