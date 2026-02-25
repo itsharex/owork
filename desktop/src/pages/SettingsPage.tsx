@@ -107,6 +107,7 @@ export default function SettingsPage() {
 
   // App version
   const [appVersion, setAppVersion] = useState<string>('');
+  const [sdkVersion, setSdkVersion] = useState<string>('');
 
   // Update state
   const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error'>('idle');
@@ -150,6 +151,11 @@ export default function SettingsPage() {
             method: 'GET',
             signal: AbortSignal.timeout(2000)
           });
+          if (response.ok) {
+            // Raw fetch (not through api service), so keys are snake_case from backend
+            const data = await response.json();
+            if (data.sdk_version) setSdkVersion(data.sdk_version);
+          }
           setBackendStatus({ running: response.ok, port });
         } catch {
           setBackendStatus({ running: false, port });
@@ -167,6 +173,10 @@ export default function SettingsPage() {
             signal: AbortSignal.timeout(2000)
           });
           running = response.ok;
+          if (running) {
+            const data = await response.json();
+            if (data.sdk_version) setSdkVersion(data.sdk_version);
+          }
         } catch {
           running = false;
         }
@@ -743,7 +753,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[var(--color-text-muted)]">Version</span>
-            <span className="text-[var(--color-text)]">0.1.20</span>
+            <span className="text-[var(--color-text)]">{sdkVersion || '...'}</span>
           </div>
           <p className="text-xs text-[var(--color-text-muted)] mt-2">
             The Claude Agent SDK includes a bundled Claude Code CLI. No external installation required.

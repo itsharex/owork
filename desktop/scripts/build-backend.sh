@@ -168,8 +168,13 @@ if ! command -v uv &> /dev/null; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# Create virtual environment with uv
-uv venv .venv
+# Install dependencies from pyproject.toml without installing the project itself.
+# --no-install-project ensures local modules (routers, core, etc.) remain as top-level
+# modules in the current dir rather than being packaged as a Python package,
+# which is required for PyInstaller to bundle them correctly.
+# This also creates the .venv automatically.
+echo "Installing dependencies with uv (from pyproject.toml)..."
+uv sync --no-install-project --frozen
 
 # Activate virtual environment
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
@@ -178,29 +183,7 @@ else
     source .venv/bin/activate
 fi
 
-# Install dependencies using uv
-# This ensures local modules (routers, core, etc.) remain as top-level modules in current dir
-echo "Installing dependencies with uv..."
-
-uv pip install pyinstaller pyinstaller-hooks-contrib
-
-# Install project dependencies from pyproject.toml (dependencies only, not as editable package)
-uv pip install \
-    "fastapi>=0.115.0" \
-    "uvicorn[standard]>=0.34.0" \
-    "python-multipart>=0.0.12" \
-    "pydantic>=2.10.0" \
-    "pydantic-settings>=2.6.0" \
-    "claude-agent-sdk>=0.1.34" \
-    "aiosqlite>=0.20.0" \
-    "python-jose[cryptography]>=3.3.0" \
-    "passlib[bcrypt]>=1.7.4" \
-    "bcrypt>=4.0.0" \
-    "slowapi>=0.1.9" \
-    "pyyaml>=6.0.0" \
-    "anyio>=4.0.0" \
-    "lark-oapi>=1.5.3" 
-    # "mcp>=1.0.0,<2.0.0"
+# Note: pyinstaller and pyinstaller-hooks-contrib are included in pyproject.toml dependencies
 
 # Verify key local modules are accessible from current directory
 echo "Verifying local modules are importable..."

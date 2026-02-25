@@ -9,6 +9,12 @@ import logging
 from pathlib import Path
 
 from config import settings, get_app_data_dir
+
+try:
+    from importlib.metadata import version as _get_version
+    _SDK_VERSION = _get_version("claude-agent-sdk")
+except Exception:
+    _SDK_VERSION = "unknown"
 from core.agent_manager import agent_manager
 from routers import agents_router, skills_router, mcp_router, chat_router, auth_router, workspace_router, settings_router, plugins_router, tasks_router, channels_router
 from channels.gateway import channel_gateway
@@ -149,6 +155,7 @@ async def health_check():
         "status": "healthy",
         "version": settings.app_version,
         "sdk": "claude-agent-sdk",
+        "sdk_version": _SDK_VERSION,
     }
 
 
