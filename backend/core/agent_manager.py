@@ -871,8 +871,8 @@ class AgentManager:
             setting_sources = ['project']
 
             # Always rebuild skill symlinks on conversation start.
-            # The workspace directory in /tmp may survive app restarts but have
-            # stale or broken symlinks (e.g., skills added/removed since last run).
+            # The workspace directory may have stale or broken symlinks
+            # (e.g., skills added/removed since last run).
             await workspace_manager.rebuild_agent_workspace(
                 agent_id,
                 effective_skill_ids,

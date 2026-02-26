@@ -4,10 +4,6 @@ from pathlib import Path
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
-# Calculate project root directory (backend's parent directory)
-_BACKEND_DIR = Path(__file__).resolve().parent
-_PROJECT_ROOT = _BACKEND_DIR.parent
-
 
 def get_app_data_dir() -> Path:
     """Get the platform-specific application data directory.
@@ -91,14 +87,12 @@ class Settings(BaseSettings):
     claude_code_use_bedrock: bool = True  # Use AWS Bedrock instead of Anthropic API
     claude_code_disable_experimental_betas: bool = True  # Disable experimental features
 
-    # Agent workspace directory (default: ./workspace relative to project root)
-    # This is where main skills are stored in .claude/skills/
-    agent_workspace_dir: str = str(_PROJECT_ROOT / "workspace")
+    # Agent workspace directory - main skills storage in .claude/skills/
+    agent_workspace_dir: str = str(get_app_data_dir() / "workspace")
 
     # Isolated per-agent workspaces directory (OUTSIDE project tree for skill isolation)
     # Each agent gets its own workspace with absolute symlinks to allowed skills
     # This prevents agents from discovering skills in parent directories
-    # Default: platform-specific app data directory / workspaces
     agent_workspaces_dir: str = str(get_app_data_dir() / "workspaces")
 
     # Built-in Sandbox Configuration (Claude Agent SDK native bash sandboxing)

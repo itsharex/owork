@@ -32,7 +32,8 @@ async def ensure_workspace_exists(agent_id: str, workspace_root: Path, base_path
     Args:
         agent_id: The agent ID
         workspace_root: The workspace root path
-        base_path: Optional custom base path (if provided, won't auto-create)
+        base_path: Optional custom base path (if provided, won't auto-create
+                   unless it points to an agent workspace under agent_workspaces_dir)
 
     Raises:
         HTTPException: If workspace doesn't exist and can't be created
@@ -40,8 +41,13 @@ async def ensure_workspace_exists(agent_id: str, workspace_root: Path, base_path
     if workspace_root.exists():
         return
 
-    if base_path:
-        # User-selected path doesn't exist - can't auto-create
+    # Check if this is an agent workspace path that can be auto-created.
+    # Paths under agent_workspaces_dir are managed by us and should be rebuilt
+    # on demand (they may have been cleaned up between app restarts).
+    is_agent_workspace = str(workspace_root).startswith(settings.agent_workspaces_dir)
+
+    if base_path and not is_agent_workspace:
+        # Truly user-selected external path doesn't exist - can't auto-create
         raise HTTPException(status_code=404, detail=f"Directory not found: {base_path}")
 
     # Auto-create agent workspace with skills
