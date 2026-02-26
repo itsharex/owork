@@ -27,7 +27,7 @@ router = APIRouter(tags=["workspace"])
 
 
 async def ensure_workspace_exists(agent_id: str, workspace_root: Path, base_path: str | None) -> None:
-    """Ensure workspace directory exists, auto-creating if necessary.
+    """Ensure workspace directory exists and skill symlinks are in place.
 
     Args:
         agent_id: The agent ID
@@ -39,6 +39,12 @@ async def ensure_workspace_exists(agent_id: str, workspace_root: Path, base_path
         HTTPException: If workspace doesn't exist and can't be created
     """
     if workspace_root.exists():
+        # For global mode agents (workspace_root is home dir), ensure skill
+        # symlinks exist in ~/.claude/skills/ so the file browser can see them.
+        # Without this, skills only become visible after the first query.
+        agent = await db.agents.get(agent_id)
+        if agent and agent.get("global_user_mode", True):
+            workspace_manager.sync_skills_to_home()
         return
 
     # Check if this is an agent workspace path that can be auto-created.

@@ -333,7 +333,8 @@ export default function ChatPage() {
     : [];
 
   // Determine if skills and MCPs should be enabled based on agent config
-  const enableSkills = selectedAgent?.allowAllSkills || agentSkills.length > 0 || agentPlugins.length > 0;
+  // Global mode agents always have skills enabled (backend forces allow_all_skills=True)
+  const enableSkills = selectedAgent?.globalUserMode || selectedAgent?.allowAllSkills || agentSkills.length > 0 || agentPlugins.length > 0;
   const enableMCP = agentMCPs.length > 0;
 
   // Reset session when work directory changes by user action (not when restoring from localStorage)
