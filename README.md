@@ -63,7 +63,7 @@ Owork 是一个功能强大的 AI Agent 管理平台，让您可以：
 
 #### 1. 安装 Owork （MAC 版）
 
-1. 下载 [`Owork_x.x.x_aarch64.dmg`](https://d1a1de1i2hajk1.cloudfront.net/owork/release/v0.0.85/Owork_0.0.85_aarch64.dmg)
+1. 下载 [`Owork_x.x.x_aarch64.dmg`](https://d1a1de1i2hajk1.cloudfront.net/owork/release/v0.0.89/Owork_0.0.89_aarch64.dmg)
 2. 双击打开 DMG 文件
 3. 将 Owork.app 拖拽到 Applications 文件夹
 4. 注意如果运行提示“文件损坏”，需要在终端执行以下命令
@@ -73,7 +73,7 @@ xattr -cr /Applications/Owork.app
 ```
 
 #### 1. 安装 Owork （Windows 版）
-1. 下载 [`Owork_x.x.x._x64-setup.zip`](https://d1a1de1i2hajk1.cloudfront.net/owork/release/v0.0.85/Owork_0.0.85_x64-setup.zip)
+1. 下载 [`Owork_x.x.x._x64-setup.zip`](https://d1a1de1i2hajk1.cloudfront.net/owork/release/v0.0.89/Owork_0.0.89_x64-setup.zip)
 2. Windows版可能显示 SmartScreen 警告。点击「更多信息」→「仍要运行」即可。
 3. 需要安装Git bash 系统依赖：https://git-scm.com/downloads/win
 
