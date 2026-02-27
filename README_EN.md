@@ -92,7 +92,7 @@ In **Plugin Management** Page, Click **Install Plugin**，copy and past plugins 
 | Name | Repo |
 |------|------|
 | Cowork knowledge-work-plugins | https://github.com/anthropics/knowledge-work-plugins.git |
-| Official KILL | https://github.com/anthropics/skills.git |
+| Official SKILL | https://github.com/anthropics/skills.git |
 | Official PLUGINS | https://github.com/anthropics/claude-plugins-official.git |
 
 
