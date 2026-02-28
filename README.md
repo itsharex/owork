@@ -16,7 +16,7 @@
 
 **简体中文** | [![English](https://img.shields.io/badge/lang-English-blue?style=flat)](./README_EN.md)
 
-[✨ 特性](#功能特性) • [🚀 快速开始](./QUICK_START.md) • [🖥️ 桌面应用](#桌面应用-owork) • [☁️ 云端部署](#云端部署) • [🛡️ 安全性](#安全性) • [📚 文档](#文档) • [📖 公众号介绍《On My Work - Owork来了》](https://mp.weixin.qq.com/s/JB2FghiYCDJYZ7BJUwjmeg)
+[✨ 特性](#功能特性) • [🚀 快速开始](./QUICK_START.md) • [🖥️ 桌面应用](#桌面应用-owork) • [🛡️ 安全性](#安全性) • [📚 文档](#文档) • [📖 公众号介绍《On My Work - Owork来了》](https://mp.weixin.qq.com/s/JB2FghiYCDJYZ7BJUwjmeg)
 
 </div>
 
