@@ -96,7 +96,7 @@ In **Plugin Management** Page, Click **Install Plugin**，copy and past plugins 
 | Official PLUGINS | https://github.com/anthropics/claude-plugins-official.git |
 
 
-> 📖 For detailed installation instructions, see [QUICK_START.md](./QUICK_START.md)
+> 📖 For detailed installation instructions, see [QUICK_START_EN.md](./QUICK_START_EN.md)
 
 ### Build from Source
 
