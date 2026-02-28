@@ -16,7 +16,7 @@ A full-stack AI agent platform built on Claude Agent SDK, supporting both deskto
 
 **English** | [![简体中文](https://img.shields.io/badge/lang-简体中文-red?style=flat)](./README.md)
 
-[✨ Features](#features) • [🖥️ Desktop App](#desktop-application-owork) • [☁️ Cloud Deployment](#cloud-deployment) • [🛡️ Security](#security) • [📚 Documentation](#documentation)
+[✨ Features](#features) • [🚀 Quick Start](./QUICK_START_EN.md) • [🖥️ Desktop App](#desktop-application-owork) • [☁️ Cloud Deployment](#cloud-deployment) • [🛡️ Security](#security) • [📚 Documentation](#documentation)
 
 </div>
 
