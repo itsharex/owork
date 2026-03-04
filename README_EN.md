@@ -119,12 +119,12 @@ npm run build:all
 
 ### Data Storage
 
-| Type | macOS Path |
-|------|------------|
-| Data Directory | `~/Library/Application Support/Owork/` |
-| Database | `~/Library/Application Support/Owork/data.db` |
-| Skills | `~/Library/Application Support/Owork/skills/` |
-| Logs | `~/Library/Application Support/Owork/logs/` |
+| Type | macOS Path | Windows Path | Linux Path |
+|------|------------|-------------|------------|
+| Data Directory | `~/Library/Application Support/Owork/` | `%LOCALAPPDATA%\Owork\` | `~/.local/share/owork/` |
+| Database | `~/Library/Application Support/Owork/data.db` | `%LOCALAPPDATA%\Owork\data.db` | `~/.local/share/owork/data.db` |
+| Skills | `~/Library/Application Support/Owork/skills/` | `%LOCALAPPDATA%\Owork\skills\` | `~/.local/share/owork/skills/` |
+| Logs | `~/Library/Application Support/Owork/logs/` | `%LOCALAPPDATA%\Owork\logs\` | `~/.local/share/owork/logs/` |
 
 ---
 

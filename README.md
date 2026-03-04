@@ -179,12 +179,12 @@ npm run build:all
 
 ### 数据存储
 
-| 类型 | macOS 路径 |
-|------|------------|
-| 数据目录 | `~/Library/Application Support/Owork/` |
-| 数据库 | `~/Library/Application Support/Owork/data.db` |
-| 技能 | `~/Library/Application Support/Owork/skills/` |
-| 日志 | `~/Library/Application Support/Owork/logs/` |
+| 类型 | macOS 路径 | Windows 路径 | Linux 路径 |
+|------|------------|-------------|------------|
+| 数据目录 | `~/Library/Application Support/Owork/` | `%LOCALAPPDATA%\Owork\` | `~/.local/share/owork/` |
+| 数据库 | `~/Library/Application Support/Owork/data.db` | `%LOCALAPPDATA%\Owork\data.db` | `~/.local/share/owork/data.db` |
+| 技能 | `~/Library/Application Support/Owork/skills/` | `%LOCALAPPDATA%\Owork\skills\` | `~/.local/share/owork/skills/` |
+| 日志 | `~/Library/Application Support/Owork/logs/` | `%LOCALAPPDATA%\Owork\logs\` | `~/.local/share/owork/logs/` |
 
 ---
 
