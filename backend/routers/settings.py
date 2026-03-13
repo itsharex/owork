@@ -39,10 +39,9 @@ async def get_api_configuration():
             default_model=app_config.default_model,
         )
 
-    # Get available_models from database, or use config defaults if empty
-    available_models = settings.get("available_models")
-    if not available_models:
-        available_models = default_models
+    # Merge: hardcoded defaults + user-added models (union, deduplicated)
+    db_models = settings.get("available_models") or []
+    available_models = list(dict.fromkeys(default_models + db_models))
 
     return APIConfigurationResponse(
         anthropic_api_key_set=bool(settings.get("anthropic_api_key")),
@@ -124,8 +123,9 @@ async def update_api_configuration(request: APIConfigurationRequest):
 
     # Handle default_model update with validation
     if request.default_model is not None:
-        available = settings.get("available_models", [])
-        if available and request.default_model not in available:
+        db_models = settings.get("available_models") or []
+        all_models = list(dict.fromkeys(default_models + db_models))
+        if all_models and request.default_model not in all_models:
             raise HTTPException(
                 status_code=400,
                 detail="default_model must be in available_models"
@@ -139,10 +139,9 @@ async def update_api_configuration(request: APIConfigurationRequest):
 
     logger.info(f"API configuration updated: use_bedrock={settings.get('use_bedrock')}, auth_type={settings.get('bedrock_auth_type')}")
 
-    # Get available_models for response, or use config defaults if empty
-    available_models = settings.get("available_models")
-    if not available_models:
-        available_models = default_models
+    # Merge: hardcoded defaults + user-added models (union, deduplicated)
+    db_models = settings.get("available_models") or []
+    available_models = list(dict.fromkeys(default_models + db_models))
 
     return APIConfigurationResponse(
         anthropic_api_key_set=bool(settings.get("anthropic_api_key")),
