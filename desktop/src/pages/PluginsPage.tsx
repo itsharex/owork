@@ -5,24 +5,12 @@ import {
   SearchBar,
   Button,
   Modal,
-  SkeletonTable,
-  ResizableTable,
-  ResizableTableCell,
   ConfirmDialog,
+  PluginCard,
 } from '../components/common';
 import type { Plugin } from '../types';
 import { pluginsService } from '../services/plugins';
 
-// Table columns for installed plugins - will be translated via hook
-const getPluginColumns = (t: (key: string) => string) => [
-  { key: 'checkbox', header: '', initialWidth: 40, minWidth: 40 },
-  { key: 'name', header: t('plugins.table.name'), initialWidth: 200, minWidth: 150 },
-  { key: 'version', header: t('plugins.table.version'), initialWidth: 100, minWidth: 80 },
-  { key: 'marketplace', header: t('plugins.table.marketplace'), initialWidth: 180, minWidth: 120 },
-  { key: 'components', header: t('common.label.components') || 'Components', initialWidth: 200, minWidth: 150 },
-  { key: 'status', header: t('plugins.table.status'), initialWidth: 100, minWidth: 80 },
-  { key: 'actions', header: '', initialWidth: 80, minWidth: 60, align: 'right' as const },
-];
 
 export default function PluginsPage() {
   const { t } = useTranslation();
@@ -33,9 +21,6 @@ export default function PluginsPage() {
   const [isBatchDeleteOpen, setIsBatchDeleteOpen] = useState(false);
 
   const queryClient = useQueryClient();
-
-  // Get translated columns
-  const PLUGIN_COLUMNS = getPluginColumns(t);
 
   // Fetch installed plugins
   const { data: plugins = [], isLoading: isLoadingPlugins } = useQuery({
@@ -78,14 +63,6 @@ export default function PluginsPage() {
       }
       return next;
     });
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === filteredPlugins.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredPlugins.map((p) => p.id)));
-    }
   };
 
   // Filter plugins by search
@@ -138,21 +115,25 @@ export default function PluginsPage() {
         />
       </div>
 
-      {/* Plugins Table / Empty State */}
-      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl overflow-hidden">
+      {/* Plugins Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {isLoadingPlugins ? (
-          <SkeletonTable rows={5} columns={6} />
+          Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5 animate-pulse">
+              <div className="h-5 bg-[var(--color-hover)] rounded w-2/3 mb-3" />
+              <div className="h-3 bg-[var(--color-hover)] rounded w-full mb-2" />
+              <div className="h-3 bg-[var(--color-hover)] rounded w-1/2 mb-3" />
+              <div className="flex gap-1.5">
+                <div className="h-5 bg-[var(--color-hover)] rounded-full w-16" />
+                <div className="h-5 bg-[var(--color-hover)] rounded-full w-12" />
+              </div>
+            </div>
+          ))
         ) : filteredPlugins.length === 0 ? (
-          <div className="py-16 flex flex-col items-center justify-center">
-            <span className="material-symbols-outlined text-5xl text-[var(--color-text-muted)] mb-4">
-              extension
-            </span>
-            <p className="text-[var(--color-text)] font-medium mb-1">
-              {t('plugins.noPlugins')}
-            </p>
-            <p className="text-[var(--color-text-muted)] text-sm mb-6">
-              {t('plugins.subtitle')}
-            </p>
+          <div className="col-span-full py-16 flex flex-col items-center justify-center">
+            <span className="material-symbols-outlined text-5xl text-[var(--color-text-muted)] mb-4">extension</span>
+            <p className="text-[var(--color-text)] font-medium mb-1">{t('plugins.noPlugins')}</p>
+            <p className="text-[var(--color-text-muted)] text-sm mb-6">{t('plugins.subtitle')}</p>
             {!searchQuery && (
               <Button icon="add" onClick={() => setIsInstallModalOpen(true)}>
                 {t('common.button.install')} Plugin
@@ -160,77 +141,16 @@ export default function PluginsPage() {
             )}
           </div>
         ) : (
-          <ResizableTable
-            columns={PLUGIN_COLUMNS}
-            headerContent={{
-              checkbox: (
-                <input
-                  type="checkbox"
-                  checked={filteredPlugins.length > 0 && selectedIds.size === filteredPlugins.length}
-                  onChange={toggleSelectAll}
-                  className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg)] text-primary focus:ring-primary cursor-pointer"
-                />
-              ),
-            }}
-          >
-            {filteredPlugins.map((plugin) => (
-              <tr
-                key={plugin.id}
-                className="border-b border-[var(--color-border)] hover:bg-[var(--color-hover)]"
-              >
-                <ResizableTableCell>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(plugin.id)}
-                    onChange={() => toggleSelect(plugin.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg)] text-primary focus:ring-primary cursor-pointer"
-                  />
-                </ResizableTableCell>
-                <ResizableTableCell>
-                  <div>
-                    <span className="text-[var(--color-text)] font-medium">{plugin.name}</span>
-                    {plugin.description && (
-                      <p className="text-xs text-[var(--color-text-muted)] line-clamp-1 mt-0.5">
-                        {plugin.description}
-                      </p>
-                    )}
-                  </div>
-                </ResizableTableCell>
-                <ResizableTableCell>
-                  <span className="text-[var(--color-text-muted)]">{plugin.version}</span>
-                </ResizableTableCell>
-                <ResizableTableCell>
-                  <span className="text-[var(--color-text-muted)]">{plugin.marketplaceName || 'Unknown'}</span>
-                </ResizableTableCell>
-                <ResizableTableCell>
-                  <span className="text-[var(--color-text-muted)] text-sm">{getComponentSummary(plugin)}</span>
-                </ResizableTableCell>
-                <ResizableTableCell>
-                  <span
-                    className={`px-2 py-0.5 text-xs rounded ${
-                      plugin.status === 'installed'
-                        ? 'bg-status-success/20 text-status-success'
-                        : plugin.status === 'disabled'
-                        ? 'bg-status-warning/20 text-status-warning'
-                        : 'bg-status-error/20 text-status-error'
-                    }`}
-                  >
-                    {plugin.status}
-                  </span>
-                </ResizableTableCell>
-                <ResizableTableCell align="right">
-                  <button
-                    onClick={() => setDeletePluginTarget(plugin)}
-                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-status-error hover:bg-status-error/10 transition-colors"
-                    title={t('plugins.uninstallPlugin')}
-                  >
-                    <span className="material-symbols-outlined text-lg">delete</span>
-                  </button>
-                </ResizableTableCell>
-              </tr>
-            ))}
-          </ResizableTable>
+          filteredPlugins.map((plugin) => (
+            <PluginCard
+              key={plugin.id}
+              plugin={plugin}
+              componentSummary={getComponentSummary(plugin)}
+              selected={selectedIds.has(plugin.id)}
+              onToggleSelect={toggleSelect}
+              onDelete={setDeletePluginTarget}
+            />
+          ))
         )}
       </div>
 

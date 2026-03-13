@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { SearchBar, Button, Modal, SkeletonTable, ResizableTable, ResizableTableCell, ConfirmDialog, AskUserQuestion, Dropdown, MarkdownRenderer } from '../components/common';
+import { SearchBar, Button, Modal, ConfirmDialog, AskUserQuestion, Dropdown, MarkdownRenderer, SkillCard } from '../components/common';
 import type { Skill, SyncResult, StreamEvent, ContentBlock, AskUserQuestion as AskUserQuestionType } from '../types';
 import { skillsService } from '../services/skills';
 import { chatService } from '../services/chat';
@@ -17,23 +17,6 @@ const modelIdToOption = (id: string) => ({
     .join(' '),
   description: id,
 });
-
-// Format timestamp to readable date time
-function formatDateTime(dateString: string): string {
-  if (!dateString) return '-';
-  const date = new Date(dateString);
-  return date.toLocaleString();
-}
-
-// Table column configuration - will be translated via hook
-const getSkillColumns = (t: (key: string) => string) => [
-  { key: 'name', header: t('skills.table.name'), initialWidth: 180, minWidth: 120 },
-  { key: 'description', header: t('skills.table.description'), initialWidth: 220, minWidth: 150 },
-  { key: 'source', header: t('skills.table.source'), initialWidth: 180, minWidth: 120 },
-  { key: 'version', header: t('skills.table.version'), initialWidth: 120, minWidth: 80 },
-  { key: 'updatedAt', header: t('common.label.updated'), initialWidth: 160, minWidth: 120 },
-  { key: 'actions', header: t('skills.table.actions'), initialWidth: 120, minWidth: 100, align: 'right' as const },
-];
 
 // Get source display for a skill
 function getSourceDisplay(skill: Skill): { label: string; icon: string; color: string } {
@@ -78,9 +61,6 @@ export default function SkillsPage() {
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Skill | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Get translated columns
-  const SKILL_COLUMNS = getSkillColumns(t);
 
   // Fetch skills on mount
   useEffect(() => {
@@ -209,82 +189,34 @@ export default function SkillsPage() {
         </div>
       </div>
 
-      {/* Skills Table */}
-      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl overflow-hidden">
+      {/* Skills Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {isInitialLoading ? (
-          <SkeletonTable rows={5} columns={5} />
+          Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5 animate-pulse">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-5 bg-[var(--color-hover)] rounded w-1/2" />
+                <div className="h-4 bg-[var(--color-hover)] rounded w-12" />
+              </div>
+              <div className="h-3 bg-[var(--color-hover)] rounded w-full mb-2" />
+              <div className="h-3 bg-[var(--color-hover)] rounded w-2/3 mb-3" />
+              <div className="h-3 bg-[var(--color-hover)] rounded w-1/3" />
+            </div>
+          ))
+        ) : filteredSkills.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center justify-center py-12">
+            <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] mb-2">construction</span>
+            <p className="text-[var(--color-text-muted)]">{t('skills.noSkills')}</p>
+          </div>
         ) : (
-          <ResizableTable columns={SKILL_COLUMNS}>
-            {filteredSkills.map((skill) => (
-              <tr
-                key={skill.id}
-                className="border-b border-[var(--color-border)] hover:bg-[var(--color-hover)] transition-colors"
-              >
-                <ResizableTableCell>
-                  <span className="text-[var(--color-text)] font-medium">{skill.name}</span>
-                </ResizableTableCell>
-                <ResizableTableCell>
-                  <span className="text-[var(--color-text-muted)]" title={skill.description}>
-                    {skill.description}
-                  </span>
-                </ResizableTableCell>
-                <ResizableTableCell>
-                  {(() => {
-                    const source = getSourceDisplay(skill);
-                    return (
-                      <div className="flex items-center gap-1.5">
-                        <span className={`material-symbols-outlined text-sm ${source.color}`}>
-                          {source.icon}
-                        </span>
-                        <span className={`text-sm ${source.color}`}>{source.label}</span>
-                      </div>
-                    );
-                  })()}
-                </ResizableTableCell>
-                <ResizableTableCell>
-                  <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs font-medium rounded">
-                    v{skill.version || '1.0.0'}
-                  </span>
-                </ResizableTableCell>
-                <ResizableTableCell>
-                  <span className="text-[var(--color-text-muted)] text-sm">
-                    {formatDateTime(skill.updatedAt)}
-                  </span>
-                </ResizableTableCell>
-                <ResizableTableCell align="right">
-                  <div className="flex items-center justify-end gap-1">
-                    {/* Only show edit actions for user-created or local skills */}
-                    {(skill.sourceType === 'user' || skill.sourceType === 'local') && (
-                      <button
-                        onClick={() => handleDeleteClick(skill)}
-                        className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-status-error hover:bg-status-error/10 transition-colors"
-                        title={t('skills.deleteSkill')}
-                      >
-                        <span className="material-symbols-outlined text-lg">delete</span>
-                      </button>
-                    )}
-                    {/* For plugin skills, show info that they are managed by plugin */}
-                    {skill.sourceType === 'plugin' && (
-                      <span className="text-xs text-[var(--color-text-muted)]" title={t('skills.source.pluginManaged')}>
-                        {t('skills.source.plugin')}
-                      </span>
-                    )}
-                  </div>
-                </ResizableTableCell>
-              </tr>
-            ))}
-
-            {filteredSkills.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-6 py-12 text-center">
-                  <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] mb-2">
-                    construction
-                  </span>
-                  <p className="text-[var(--color-text-muted)]">{t('skills.noSkills')}</p>
-                </td>
-              </tr>
-            )}
-          </ResizableTable>
+          filteredSkills.map((skill) => (
+            <SkillCard
+              key={skill.id}
+              skill={skill}
+              sourceDisplay={getSourceDisplay(skill)}
+              onDelete={(skill.sourceType === 'user' || skill.sourceType === 'local') ? handleDeleteClick : undefined}
+            />
+          ))
         )}
       </div>
 

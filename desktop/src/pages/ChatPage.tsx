@@ -1809,7 +1809,7 @@ export default function ChatPage() {
         ) : (
           <>
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
               {messages.map((message) => (
                 <MessageBubble
                   key={message.id}
@@ -1885,7 +1885,7 @@ export default function ChatPage() {
                       ? 'border-primary bg-primary/5'
                       : runAsTask
                         ? 'border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.1)]'
-                        : 'border-[var(--color-border)]'
+                        : 'border-[var(--color-border)] shadow-lg'
                   )}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -2005,7 +2005,7 @@ export default function ChatPage() {
                       onKeyDown={handleKeyDown}
                       onPaste={handlePaste}
                       placeholder={t('chat.placeholder')}
-                      rows={1}
+                      rows={2}
                       className="flex-1 bg-transparent text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none py-2"
                     />
 
@@ -2082,8 +2082,8 @@ export default function ChatPage() {
                 </div>
 
                 {/* Footer */}
-                <p className="text-center text-xs text-[var(--color-text-muted)]/60 mt-4 uppercase tracking-wider">
-                  {"Immersive Workspace • Powered by Claude Code"}
+                <p className="text-center text-xs text-[var(--color-text-muted)]/40 mt-4 uppercase tracking-[0.2em]">
+                  {"POWERED BY CLAUDE CODE"}
                 </p>
               </div>
             </div>
@@ -2209,36 +2209,73 @@ function ToolUseBlock({ name, input }: { name: string; input: Record<string, unk
   };
 
   return (
-    <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 bg-[var(--color-hover)]">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary text-sm">terminal</span>
-          <span className="text-sm font-medium text-[var(--color-text)]">Tool Call: {name}</span>
+    <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg overflow-hidden flex">
+      <div className="w-1 bg-[var(--color-accent)] flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[var(--color-accent)] text-sm">terminal</span>
+            <span className="text-sm font-medium text-[var(--color-text)]">{name}</span>
+          </div>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-hover)] rounded transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">
+              {copied ? 'check' : 'content_copy'}
+            </span>
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+        <div className="px-4 pb-3">
+          <pre className="text-sm text-[var(--color-text-muted)] overflow-x-auto whitespace-pre-wrap break-words">
+            <code>{displayContent}</code>
+          </pre>
+          {shouldCollapse && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              aria-expanded={isExpanded}
+              className="mt-2 text-xs text-primary hover:text-primary-hover transition-colors flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-sm">
+                {isExpanded ? 'expand_less' : 'expand_more'}
+              </span>
+              {isExpanded ? 'Show less' : `Show more (${hiddenChars} more chars)`}
+            </button>
+          )}
         </div>
       </div>
-      <div className="p-4 relative">
-        <button
-          onClick={handleCopy}
-          className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] bg-[var(--color-hover)] rounded transition-colors"
-        >
-          <span className="material-symbols-outlined text-sm">
-            {copied ? 'check' : 'content_copy'}
-          </span>
-          {copied ? 'Copied!' : 'Copy'}
-        </button>
+    </div>
+  );
+}
+
+function ToolResultBlock({ content }: { content: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const shouldCollapse = content.length > TOOL_INPUT_COLLAPSE_LENGTH;
+  const displayContent = shouldCollapse && !isExpanded
+    ? content.slice(0, TOOL_INPUT_COLLAPSE_LENGTH) + '...'
+    : content;
+
+  return (
+    <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg overflow-hidden flex">
+      <div className="w-1 bg-status-success flex-shrink-0" />
+      <div className="flex-1 min-w-0 px-4 py-3">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="material-symbols-outlined text-status-success text-sm">check_circle</span>
+          <span className="text-sm font-medium text-[var(--color-text)]">Result</span>
+        </div>
         <pre className="text-sm text-[var(--color-text-muted)] overflow-x-auto whitespace-pre-wrap break-words">
           <code>{displayContent}</code>
         </pre>
         {shouldCollapse && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            aria-expanded={isExpanded}
             className="mt-2 text-xs text-primary hover:text-primary-hover transition-colors flex items-center gap-1"
           >
             <span className="material-symbols-outlined text-sm">
               {isExpanded ? 'expand_less' : 'expand_more'}
             </span>
-            {isExpanded ? 'Show less' : `Show more (${hiddenChars} more chars)`}
+            {isExpanded ? 'Show less' : 'Show more'}
           </button>
         )}
       </div>
@@ -2258,30 +2295,32 @@ function MessageBubble({ message, onAnswerQuestion, pendingToolUseId, isStreamin
   const isUser = message.role === 'user';
 
   return (
-    <div className={clsx('flex gap-4', isUser && 'flex-row-reverse')}>
+    <div className={clsx('flex gap-3', isUser && 'flex-row-reverse')}>
       <div
         className={clsx(
-          'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0',
-          isUser ? 'bg-orange-500/20' : 'bg-[var(--color-card)]'
+          'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+          isUser ? 'bg-[var(--color-accent-light)]' : 'bg-[var(--color-hover)]'
         )}
       >
-        <span className={clsx('material-symbols-outlined', isUser ? 'text-orange-400' : 'text-primary')}>
+        <span className={clsx('material-symbols-outlined text-lg', isUser ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]')}>
           {isUser ? 'person' : 'smart_toy'}
         </span>
       </div>
 
-      <div className={clsx('flex-1 max-w-3xl', isUser && 'text-right')}>
-        <div className={clsx('flex items-center gap-2 mb-1', isUser && 'justify-end')}>
-          <span className="font-medium text-[var(--color-text)]">{isUser ? 'User' : 'AI Agent'}</span>
-          <span className="text-xs text-[var(--color-text-muted)]">
-            {new Date(message.timestamp).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </span>
-        </div>
+      <div className={clsx('flex-1 max-w-3xl', isUser && 'flex flex-col items-end')}>
+        <span className="text-xs text-[var(--color-text-muted)] mb-1.5">
+          {new Date(message.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </span>
 
-        <div className={clsx('space-y-3', isUser && 'inline-block text-left')}>
+        <div className={clsx(
+          'space-y-3',
+          isUser
+            ? 'bg-[var(--color-accent-light)] rounded-2xl rounded-tr-sm px-4 py-3 inline-block text-left'
+            : ''
+        )}>
           {message.content.map((block, index) => (
             <ContentBlockRenderer
               key={index}
@@ -2324,17 +2363,7 @@ function ContentBlockRenderer({ block, onAnswerQuestion, pendingToolUseId, isStr
   }
 
   if (block.type === 'tool_result') {
-    return (
-      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="material-symbols-outlined text-status-online text-sm">check_circle</span>
-          <span className="text-sm font-medium text-[var(--color-text)]">Tool Result</span>
-        </div>
-        <pre className="text-sm text-[var(--color-text-muted)] overflow-x-auto whitespace-pre-wrap break-words">
-          <code>{block.content}</code>
-        </pre>
-      </div>
-    );
+    return <ToolResultBlock content={block.content || ''} />;
   }
 
   if (block.type === 'ask_user_question') {

@@ -41,19 +41,18 @@ function formatDuration(startedAt: string | null, completedAt: string | null): s
 function StatusBadge({ status }: { status: TaskStatus }) {
   const { t } = useTranslation();
 
-  const config: Record<TaskStatus, { color: string; icon: string; spin?: boolean }> = {
-    pending: { color: 'bg-gray-500/20 text-gray-400', icon: 'schedule' },
-    running: { color: 'bg-blue-500/20 text-blue-400', icon: 'sync', spin: true },
-    completed: { color: 'bg-green-500/20 text-green-400', icon: 'check_circle' },
-    failed: { color: 'bg-red-500/20 text-red-400', icon: 'error' },
-    cancelled: { color: 'bg-gray-500/20 text-gray-400', icon: 'cancel' },
+  const config: Record<TaskStatus, { color: string }> = {
+    pending: { color: 'bg-gray-500/10 text-gray-500' },
+    running: { color: 'bg-blue-500/10 text-blue-500' },
+    completed: { color: 'bg-green-500/10 text-green-500' },
+    failed: { color: 'bg-red-500/10 text-red-500' },
+    cancelled: { color: 'bg-gray-500/10 text-gray-400' },
   };
 
-  const { color, icon, spin = false } = config[status] || config.pending;
+  const { color } = config[status] || config.pending;
 
   return (
-    <span className={clsx('inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium', color)}>
-      <span className={clsx('material-symbols-outlined text-sm', spin && 'animate-spin')}>{icon}</span>
+    <span className={clsx('inline-flex items-center px-3 py-1 rounded-full text-xs font-medium', color)}>
       {t(`tasks.status.${status}`)}
     </span>
   );
@@ -201,7 +200,7 @@ export default function TasksPage() {
       <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-[var(--color-border)]">
+            <tr className="border-b border-[var(--color-border)]/50">
               <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
                 {t('tasks.columns.name')}
               </th>
@@ -244,29 +243,29 @@ export default function TasksPage() {
               filteredTasks.map((task) => (
                 <tr
                   key={task.id}
-                  className="border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-hover)] transition-colors"
+                  className="group border-b border-[var(--color-border)]/30 last:border-b-0 hover:bg-[var(--color-hover)] transition-colors"
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <span className="text-[var(--color-text)] font-medium truncate block max-w-xs">
                       {task.title}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-[var(--color-text-muted)]">
+                  <td className="px-4 py-4 text-[var(--color-text-muted)]">
                     {agentMap[task.agentId]?.name || task.agentId}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <StatusBadge status={task.status} />
                   </td>
-                  <td className="px-4 py-3 text-[var(--color-text-muted)] text-sm">
+                  <td className="px-4 py-4 text-[var(--color-text-muted)] text-sm">
                     {task.model?.replace('claude-', '').replace(/-\d+$/, '') || '-'}
                   </td>
-                  <td className="px-4 py-3 text-[var(--color-text-muted)] text-sm">
+                  <td className="px-4 py-4 text-[var(--color-text-muted)] text-sm">
                     {formatRelativeTime(task.startedAt || task.createdAt, t)}
                   </td>
-                  <td className="px-4 py-3 text-[var(--color-text-muted)] text-sm font-mono">
+                  <td className="px-4 py-4 text-[var(--color-text-muted)] text-sm font-mono">
                     {formatDuration(task.startedAt, task.completedAt)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => handleViewChat(task)}
@@ -275,22 +274,24 @@ export default function TasksPage() {
                       >
                         <span className="material-symbols-outlined text-xl">chat</span>
                       </button>
-                      {task.status === 'running' && (
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                        {task.status === 'running' && (
+                          <button
+                            onClick={() => setTaskToCancel(task)}
+                            title={t('tasks.actions.cancel')}
+                            className="p-2 text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-xl">stop_circle</span>
+                          </button>
+                        )}
                         <button
-                          onClick={() => setTaskToCancel(task)}
-                          title={t('tasks.actions.cancel')}
+                          onClick={() => setTaskToDelete(task)}
+                          title={t('tasks.actions.delete')}
                           className="p-2 text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                         >
-                          <span className="material-symbols-outlined text-xl">stop_circle</span>
+                          <span className="material-symbols-outlined text-xl">delete</span>
                         </button>
-                      )}
-                      <button
-                        onClick={() => setTaskToDelete(task)}
-                        title={t('tasks.actions.delete')}
-                        className="p-2 text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-xl">delete</span>
-                      </button>
+                      </div>
                     </div>
                   </td>
                 </tr>

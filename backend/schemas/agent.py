@@ -60,7 +60,7 @@ class AgentConfig(BaseModel):
     enable_safety_checks: bool = True
     enable_file_access_control: bool = Field(default=True, description="Restrict file access to working_directory and allowed_directories")
     allowed_directories: list[str] = Field(default_factory=list, description="Additional directories the agent can access (beyond working_directory)")
-    global_user_mode: bool = Field(default=True, description="If True, uses home directory and full file access instead of isolated workspace")
+    global_user_mode: bool = Field(default=False, description="If True, uses home directory and full file access instead of isolated workspace")
     enable_human_approval: bool = Field(default=True, description="If True, dangerous commands require user approval instead of auto-blocking")
     sandbox_enabled: bool = Field(default=False, description="Enable sandbox for bash command isolation (restricts curl, wget, etc.)")
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig, description="Sandbox configuration for bash isolation")
@@ -120,7 +120,7 @@ class AgentCreateRequest(BaseModel):
     enable_web_tools: bool = False
     enable_file_access_control: bool = True
     allowed_directories: list[str] = Field(default_factory=list)
-    global_user_mode: bool = True
+    global_user_mode: bool = False
     enable_human_approval: bool = True
     sandbox_enabled: bool = False
     sandbox: SandboxConfigRequest | None = None
@@ -195,7 +195,7 @@ class AgentResponse(BaseModel):
     enable_safety_checks: bool = True
     enable_file_access_control: bool = True
     allowed_directories: list[str] = Field(default_factory=list)
-    global_user_mode: bool = True
+    global_user_mode: bool = False
     enable_human_approval: bool = True
     sandbox_enabled: bool = False
     sandbox: SandboxConfigResponse = Field(default_factory=SandboxConfigResponse)

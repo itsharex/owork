@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { SearchBar, StatusBadge, Button, SkeletonTable, ResizableTable, ResizableTableCell, ConfirmDialog, AgentFormModal } from '../components/common';
+import { SearchBar, Button, ConfirmDialog, AgentFormModal, AgentCard } from '../components/common';
 import type { Agent, AgentCreateRequest, Skill, MCPServer } from '../types';
 import { agentsService } from '../services/agents';
 import { skillsService } from '../services/skills';
@@ -13,15 +13,6 @@ export default function AgentsPage() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
-  // Agent table column configuration
-  const AGENT_COLUMNS = [
-    { key: 'name', header: t('agents.table.name'), initialWidth: 180, minWidth: 120 },
-    { key: 'status', header: t('agents.table.status'), initialWidth: 100, minWidth: 80 },
-    { key: 'model', header: t('agents.table.model'), initialWidth: 200, minWidth: 150 },
-    { key: 'skills', header: t('agents.table.skills'), initialWidth: 200, minWidth: 120 },
-    { key: 'mcps', header: t('agents.table.mcps'), initialWidth: 200, minWidth: 120 },
-    { key: 'actions', header: t('agents.table.actions'), initialWidth: 140, minWidth: 100, align: 'right' as const },
-  ];
   const [agents, setAgents] = useState<Agent[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -157,93 +148,44 @@ export default function AgentsPage() {
         </Button>
       </div>
 
-      <div className="flex gap-6">
-        {/* Agent List */}
-        <div className="flex-1">
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder={t('agents.searchPlaceholder')}
-            className="mb-4"
-          />
+      <SearchBar
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder={t('agents.searchPlaceholder')}
+        className="mb-4"
+      />
 
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl overflow-hidden">
-            {isInitialLoading ? (
-              <SkeletonTable rows={5} columns={6} />
-            ) : (
-              <ResizableTable columns={AGENT_COLUMNS}>
-                {filteredAgents.map((agent) => (
-                  <tr
-                    key={agent.id}
-                    className="border-b border-[var(--color-border)] hover:bg-[var(--color-hover)] transition-colors"
-                  >
-                    <ResizableTableCell>
-                      <span className="text-[var(--color-text)] font-medium">{agent.name}</span>
-                    </ResizableTableCell>
-                    <ResizableTableCell>
-                      <StatusBadge status={agent.status} />
-                    </ResizableTableCell>
-                    <ResizableTableCell>
-                      <span className="text-[var(--color-text-muted)]">{agent.model}</span>
-                    </ResizableTableCell>
-                    <ResizableTableCell>
-                      <span className="text-[var(--color-text-muted)]" title={getSkillNames(agent)}>
-                        {getSkillNames(agent)}
-                      </span>
-                    </ResizableTableCell>
-                    <ResizableTableCell>
-                      <span className="text-[var(--color-text-muted)]" title={getMcpNames(agent.mcpIds)}>
-                        {getMcpNames(agent.mcpIds)}
-                      </span>
-                    </ResizableTableCell>
-                    <ResizableTableCell align="right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartChat(agent.id);
-                          }}
-                          className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-primary hover:bg-primary/10 transition-colors"
-                          title={t('agents.startChat')}
-                        >
-                          <span className="material-symbols-outlined text-xl">chat</span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenEditModal(agent);
-                          }}
-                          className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors"
-                          title={t('chat.editAgent')}
-                        >
-                          <span className="material-symbols-outlined text-xl">edit</span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(agent);
-                          }}
-                          className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-status-error hover:bg-status-error/10 transition-colors"
-                          title={t('agents.deleteAgent')}
-                        >
-                          <span className="material-symbols-outlined text-xl">delete</span>
-                        </button>
-                      </div>
-                    </ResizableTableCell>
-                  </tr>
-                ))}
-                {filteredAgents.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
-                      <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] mb-2">smart_toy</span>
-                      <p className="text-[var(--color-text-muted)]">{t('agents.noAgents')}</p>
-                    </td>
-                  </tr>
-                )}
-              </ResizableTable>
-            )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {isInitialLoading ? (
+          Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5 animate-pulse">
+              <div className="h-5 bg-[var(--color-hover)] rounded w-2/3 mb-3" />
+              <div className="h-3 bg-[var(--color-hover)] rounded w-full mb-2" />
+              <div className="h-3 bg-[var(--color-hover)] rounded w-1/2 mb-4" />
+              <div className="flex gap-1.5">
+                <div className="h-5 bg-[var(--color-hover)] rounded-full w-16" />
+                <div className="h-5 bg-[var(--color-hover)] rounded-full w-12" />
+              </div>
+            </div>
+          ))
+        ) : filteredAgents.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center justify-center py-12">
+            <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] mb-2">smart_toy</span>
+            <p className="text-[var(--color-text-muted)]">{t('agents.noAgents')}</p>
           </div>
-        </div>
+        ) : (
+          filteredAgents.map((agent) => (
+            <AgentCard
+              key={agent.id}
+              agent={agent}
+              skillNames={getSkillNames(agent)}
+              mcpNames={getMcpNames(agent.mcpIds)}
+              onChat={handleStartChat}
+              onEdit={handleOpenEditModal}
+              onDelete={handleDeleteClick}
+            />
+          ))
+        )}
       </div>
 
       {/* Create Modal */}

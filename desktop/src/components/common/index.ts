@@ -31,3 +31,6 @@ export {
 export { ResizableTable, ResizableTableCell } from './ResizableTable';
 export { default as BackendStartupOverlay } from './BackendStartupOverlay';
 export { default as UpdateNotification } from './UpdateNotification';
+export { default as AgentCard } from './AgentCard';
+export { default as SkillCard } from './SkillCard';
+export { default as PluginCard } from './PluginCard';
